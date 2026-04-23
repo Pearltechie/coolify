@@ -1,0 +1,29 @@
+# documentation: https://surrealdb.com/docs/surrealdb/installation/running/docker
+# slogan: The ultimate database for tomorrow's applications. A graph, document, relational, time-series and vector database in one.
+# category: database
+# tags: surrealdb, database, graph, document, multi-model, rocksdb
+# logo: svgs/surrealdb.svg
+# port: 8000
+
+services:
+  surrealdb:
+    image: surrealdb/surrealdb:latest
+    command:
+      - start
+      - --bind=0.0.0.0:8000
+      - --user=${SERVICE_USER_SURREAL}
+      - --pass=${SERVICE_PASSWORD_SURREAL}
+      - --log=${SURREAL_LOG:-info}
+      - rocksdb:/data/database.db
+    environment:
+      - SERVICE_URL_SURREALDB_8000
+      - SERVICE_USER_SURREAL
+      - SERVICE_PASSWORD_SURREAL
+    volumes:
+      - surrealdb-data:/data
+    healthcheck:
+      test: ["CMD", "/surreal", "is-ready", "--endpoint", "http://127.0.0.1:8000"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s

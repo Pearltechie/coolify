@@ -1,0 +1,56 @@
+# documentation: https://surrealdb.com/docs/surrealdb/installation/running/docker
+# slogan: SurrealDB running against a TiKV-backed distributed key-value store.
+# category: database
+# tags: surrealdb, database, graph, document, multi-model, tikv, distributed
+# logo: svgs/surrealdb.svg
+# port: 8000
+
+services:
+  pd:
+    image: pingcap/pd:latest
+    restart: unless-stopped
+    command:
+      - --name=pd
+      - --data-dir=/pd-data
+      - --client-urls=http://0.0.0.0:2379
+      - --advertise-client-urls=http://pd:2379
+      - --peer-urls=http://0.0.0.0:2380
+      - --advertise-peer-urls=http://pd:2380
+      - --initial-cluster=pd=http://pd:2380
+    volumes:
+      - tikv-pd-data:/pd-data
+
+  tikv:
+    image: pingcap/tikv:latest
+    restart: unless-stopped
+    depends_on:
+      - pd
+    command:
+      - --pd-endpoints=pd:2379
+      - --addr=0.0.0.0:20160
+      - --advertise-addr=tikv:20160
+      - --data-dir=/tikv-data
+    volumes:
+      - tikv-data:/tikv-data
+
+  surrealdb:
+    image: surrealdb/surrealdb:latest
+    depends_on:
+      - tikv
+    command:
+      - start
+      - --bind=0.0.0.0:8000
+      - --user=${SERVICE_USER_SURREAL}
+      - --pass=${SERVICE_PASSWORD_SURREAL}
+      - --log=${SURREAL_LOG:-info}
+      - tikv://pd:2379
+    environment:
+      - SERVICE_URL_SURREALDB_8000
+      - SERVICE_USER_SURREAL
+      - SERVICE_PASSWORD_SURREAL
+    healthcheck:
+      test: ["CMD", "/surreal", "is-ready", "--endpoint", "http://127.0.0.1:8000"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
